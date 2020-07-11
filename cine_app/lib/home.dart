@@ -1,4 +1,7 @@
-import 'package:cine_app/item.dart';
+import 'dart:async';
+
+import 'package:cine_app/model/item.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class Home extends StatefulWidget {
@@ -8,29 +11,46 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
 
-  List<Item> lista = [];
+  //List<Item> lista = [];
+
+      //Conexão Fluter+Firebase
+  final db = Firestore.instance;
+  final String colecao = "cafes";
+
+  //Lista dinâmica para manipulação dos dados
+  List<Item> lista = List();
+
+  //Stream para "ouvir" o Firebase
+  StreamSubscription<QuerySnapshot> listen;
+
+  @override
+  void initState() {
+    super.initState();
+
+    //cancelar o listen, caso a coleção esteja vazia.
+    listen?.cancel();
+
+    //retornar dados da coleção e inserir na lista dinâmica
+    listen = db.collection(colecao).snapshots().listen((res) {
+      setState(() {
+        lista = res.documents
+            .map((doc) => Item.fromMap(doc.data, doc.documentID))
+            .toList();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    listen?.cancel();
+    super.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
 
-    lista.add(Item("FROZEN 2", "assets/imagens/frozen2.jpg", "Animação", "A"));
-    lista.add(Item("PROCURANDO DORY", "assets/imagens/dory.jpg", "Animação", "A"));
-    lista.add(Item("DIVERTIDAMENTE", "assets/imagens/divertidamente.jpg", "Animação", "A"));
-    lista.add(Item("COMO TREINAR O SEU DRAGÃO 3", "assets/imagens/dragao.jpg", "Animação", "A"));
-    lista.add(Item("TOY STORY 4", "assets/imagens/toy.jpg", "Animação", "A"));
-    lista.add(Item("A BRUXA DE BLAIR", "assets/imagens/a_bruxa_de_blair.jpg", "Terror", "F"));
-    lista.add(Item("AVATAR", "assets/imagens/avatar.jpg", "Ficção Cientifica", "F"));
-    lista.add(Item("ANNABELLE", "assets/imagens/annabelle.jpg", "Terror", "F"));
-    lista.add(Item("CORINGA", "assets/imagens/coringa.jpg", "Ficção Cientifica", "F"));
-    lista.add(Item("VINGADORES - GUERRA INFINITA", "assets/imagens/guerra_infinita.jpg", "Ficção Cientifica", "F"));
-    lista.add(Item("INTERESTELAR", "assets/imagens/interestelar.jpg", "Ficção Cientifica", "F"));
-    lista.add(Item("O SENHOR DOS ANEIS", "assets/imagens/senhor_dos_aneis.jpg", "Ficção Cientifica", "F"));
-    lista.add(Item("VINGADORES - ULTIMATO", "assets/imagens/ultimato.jpg", "Ficção Cientifica", "F"));
-    lista.add(Item("GAME OF THRONES", "assets/imagens/got.jpg", "Ficção Cientifica", "S"));
-    lista.add(Item("STRANGER THINGS", "assets/imagens/strangerthings.jpg", "Ficção Cientifica", "S"));
-    lista.add(Item("THE WITCHER", "assets/imagens/thewitcher.jpg", "Terror", "S"));
-    lista.add(Item("VIKINGS", "assets/imagens/vikings.jpg", "Comedia", "S"));
-    lista.add(Item("CHERNOBYL", "assets/imagens/chernobyl.jpg", "Terror", "S"));
+    String usuario = ModalRoute.of(context).settings.arguments.toString();
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -55,11 +75,11 @@ class _HomeState extends State<Home> {
                 height: MediaQuery.of(context).size.height * 0.1,
                 child: Row(
                   children: <Widget>[
-                    botaoVerFilmes(context),
+                    botaoVerFilmes(context, usuario),
                     Container(width: MediaQuery.of(context).size.width * 0.005),
-                    botaoSeries(context),
+                    botaoSeries(context, usuario),
                     Container(width: MediaQuery.of(context).size.width * 0.005,),
-                    botaoAnimacoes(context)
+                    botaoAnimacoes(context, usuario)                    
                   ],
                 )
               ),
@@ -67,6 +87,17 @@ class _HomeState extends State<Home> {
                 color: Colors.black,
                 child: Image.asset("assets/imagens/background.png")
               ),
+              Container(
+                child: Row(
+                  children: <Widget>[
+                    botaoCadastrarItem(context, usuario),
+                    Container(width: MediaQuery.of(context).size.width * 0.005),
+                    botaoUsuariosCadastrados(context, usuario),
+                    Container(width: MediaQuery.of(context).size.width * 0.005),
+                    botaoLog(context, usuario),
+                  ],
+                )                
+              )
 
               
             ],
@@ -79,7 +110,7 @@ class _HomeState extends State<Home> {
   }
 
 
-  botaoVerFilmes(BuildContext context){
+  botaoVerFilmes(BuildContext context, String usuario){
     return Container(
       width: MediaQuery.of(context).size.width * 0.33,
       padding: const EdgeInsets.only(top: 20),
@@ -97,14 +128,14 @@ class _HomeState extends State<Home> {
           Navigator.pushNamed(
             context, 
             "/lista_filmes", 
-            arguments: lista.where((element) => element.tipo == "F").toList()
+            arguments: usuario
           );
         },
       )
     );
   }
 
-  botaoSeries(BuildContext context){
+  botaoSeries(BuildContext context, String usuario){
     return Container(      
       width: MediaQuery.of(context).size.width * 0.33,
       padding: const EdgeInsets.only(top: 20),
@@ -122,14 +153,14 @@ class _HomeState extends State<Home> {
           Navigator.pushNamed(
             context, 
             "/lista_series", 
-            arguments: lista.where((element) => element.tipo == "S").toList()
+            arguments: usuario
           );
         },
       )
     );
   }
 
-  botaoAnimacoes(BuildContext context){
+  botaoAnimacoes(BuildContext context, String usuario){
     return Container(
       width: MediaQuery.of(context).size.width * 0.33,
       padding: const EdgeInsets.only(top: 20),
@@ -146,13 +177,104 @@ class _HomeState extends State<Home> {
         onPressed: () {
           Navigator.pushNamed(
             context, 
-            "/lista_animacoes", 
-            arguments: lista.where((element) => element.tipo == "A").toList()
+            "/lista_animacoes",
+            arguments: usuario
           );
         },
       )
     );
   }
 
+  botaoCadastrarItem(BuildContext context, String usuario){
+    if(usuario == "adm"){
+      return Container(
+      width: MediaQuery.of(context).size.width * 0.33,
+      padding: const EdgeInsets.only(top: 20),
+      child: RaisedButton(
+        child: Text(
+          "Cadastrar Item",
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold
+          ),
+        ),
+        color: Colors.yellow[300],
+        //evento do botão
+        onPressed: () {
+          Navigator.pushNamed(
+            context, 
+            "/cadastrarItem"
+          );
+        },
+      )
+    );
+    }
+    else{
+      return Container(
+      );
+    }
+  }
 
+  botaoUsuariosCadastrados(BuildContext context, String usuario){
+    if(usuario == "adm"){
+      return Container(
+      width: MediaQuery.of(context).size.width * 0.33,
+      padding: const EdgeInsets.only(top: 20),
+      child: RaisedButton(
+        child: Text(
+          "Lista Usuarios",
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold
+          ),
+        ),
+        color: Colors.yellow[300],
+        //evento do botão
+        onPressed: () {
+          Navigator.pushNamed(
+            context, 
+            "/lista_usuarios"
+          );
+        },
+      )
+    );
+    }
+    else{
+      return Container(
+      );
+    }
+  }
+
+  botaoLog(BuildContext context, String usuario){
+    if(usuario == "adm"){
+      return Container(
+      width: MediaQuery.of(context).size.width * 0.33,
+      padding: const EdgeInsets.only(top: 20),
+      child: RaisedButton(
+        child: Text(
+          "Lista de Log's",
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold
+          ),
+        ),
+        color: Colors.yellow[300],
+        //evento do botão
+        onPressed: () {
+          Navigator.pushNamed(
+            context, 
+            "/tela_log"
+          );
+        },
+      )
+    );
+    }
+    else{
+      return Container(
+      );
+    }
+  }
 }

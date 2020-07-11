@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "563339145407",
+    "firebase_url": "https://cine-app-754cc.firebaseio.com",
+    "project_id": "cine-app-754cc",
+    "storage_bucket": "cine-app-754cc.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:563339145407:android:7977127716f6e66b94160a",
+        "android_client_info": {
+          "package_name": "com.example.cine_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "563339145407-ebs6hi2d3bph0nk686ruskej0258vqh4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbJp-ezawToXv7H4jE0v3e1H1tO8J-Uzg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "563339145407-ebs6hi2d3bph0nk686ruskej0258vqh4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

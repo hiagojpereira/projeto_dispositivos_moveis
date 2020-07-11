@@ -1,40 +1,11 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-class Usuario {
-  final String nome;
-  final String senha;
-  final String email;
-
-  Usuario(this.nome, this.senha, this.email);
-
-  Usuario.fromJson(Map<String, dynamic> jsonData) :
-    nome = jsonData['Nome'],
-    senha = jsonData['Senha'],
-    email = jsonData['Email'];
-
-}
-
-class ListaUsuario {
-  static List<Usuario> listaUsuario = new List<Usuario>();
-
-  ListaUsuario();
-
-  getUsuarios(){
-    return listaUsuario;
-  }
-
-  addUsuario(Usuario usuario){
-    listaUsuario.forEach((element) {
-      if(usuario.nome == element.nome || usuario.email == element.email){
-        return false;
-      }
-    });
-
-    listaUsuario.add(usuario);
-    return true; 
-  }
-}
+import 'model/log.dart';
+import 'model/usuario.dart';
 
 class Login extends StatefulWidget {
   @override
@@ -44,7 +15,6 @@ class Login extends StatefulWidget {
 //List<Usuario> listaTeste = new List<Usuario>();
 
 class _LoginState extends State<Login> {
-  //variaveis
 
   //globa key serve para identificar de forma unificada todos os elementos da classe
   GlobalKey<FormState> _formkey = GlobalKey<FormState>();
@@ -56,18 +26,44 @@ class _LoginState extends State<Login> {
   TextEditingController txtCadSenha2 = TextEditingController();
   TextEditingController txtCadEmail = TextEditingController();
 
-  ListaUsuario listaUsuario = new ListaUsuario();
-
   bool _cadastrarHabilitado;
   bool okUsuario;
   bool okEmail;
 
+
+    //Conexão Fluter+Firebase
+  final db = Firestore.instance;
+  final String colecao = "usuario";
+
+  //Lista dinâmica para manipulação dos dados
+  List<Usuario> lista = List();
+
+  //Stream para "ouvir" o Firebase
+  StreamSubscription<QuerySnapshot> listen;
+
   @override
   void initState() {
     super.initState();
-    
+
     _cadastrarHabilitado = false;
-    listaUsuario.addUsuario(new Usuario("adm", "adm", "adm@email.com"));
+
+    //cancelar o listen, caso a coleção esteja vazia.
+    listen?.cancel();
+
+    //retornar dados da coleção e inserir na lista dinâmica
+    listen = db.collection(colecao).snapshots().listen((res) {
+      setState(() {
+        lista = res.documents
+            .map((doc) => Usuario.fromMap(doc.data, doc.documentID))
+            .toList();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    listen?.cancel();
+    super.dispose();
   }
 
   cadastroTrue(){
@@ -85,6 +81,8 @@ class _LoginState extends State<Login> {
   
   @override
   Widget build(BuildContext context) {
+    
+
     if(_cadastrarHabilitado == false){
       return new Scaffold(
         appBar: AppBar(
@@ -174,10 +172,8 @@ class _LoginState extends State<Login> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 100),
       child: TextFormField(
-        keyboardType: TextInputType.text, //permite digitar apenas valores
+        keyboardType: TextInputType.text,
         style: TextStyle(color: Colors.red[900], fontSize: 20),
-
-        //perfumaria no design
         decoration: InputDecoration(
           labelText: rotulo,
           labelStyle: TextStyle(
@@ -202,10 +198,8 @@ class _LoginState extends State<Login> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 100),
       child: TextFormField(
-        keyboardType: TextInputType.text, //permite digitar apenas valores
+        keyboardType: TextInputType.text,
         style: TextStyle(color: Colors.red[900], fontSize: 20),
-
-        //perfumaria no design
         decoration: InputDecoration(
           labelText: rotulo,
           labelStyle: TextStyle(
@@ -231,10 +225,8 @@ class _LoginState extends State<Login> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 100),
       child: TextFormField(
-        keyboardType: TextInputType.text, //permite digitar apenas valores
+        keyboardType: TextInputType.text,
         style: TextStyle(color: Colors.red[900], fontSize: 20),
-
-        //perfumaria no design
         decoration: InputDecoration(
           labelText: rotulo2,
           labelStyle: TextStyle(
@@ -259,10 +251,8 @@ class _LoginState extends State<Login> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 100),
       child: TextFormField(
-        keyboardType: TextInputType.text, //permite digitar apenas valores
+        keyboardType: TextInputType.text,
         style: TextStyle(color: Colors.red[900], fontSize: 20),
-
-        //perfumaria no design
         decoration: InputDecoration(
           labelText: rotulo2,
           labelStyle: TextStyle(
@@ -288,10 +278,8 @@ class _LoginState extends State<Login> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 100),
       child: TextFormField(
-        keyboardType: TextInputType.text, //permite digitar apenas valores
+        keyboardType: TextInputType.text,
         style: TextStyle(color: Colors.red[900], fontSize: 20),
-
-        //perfumaria no design
         decoration: InputDecoration(
           labelText: rotulo2,
           labelStyle: TextStyle(
@@ -317,10 +305,9 @@ class _LoginState extends State<Login> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 100),
       child: TextFormField(
-        keyboardType: TextInputType.emailAddress, //permite digitar apenas valores
+        keyboardType: TextInputType.emailAddress, 
         style: TextStyle(color: Colors.red[900], fontSize: 20),
 
-        //perfumaria no design
         decoration: InputDecoration(
           labelText: rotulo2,
           labelStyle: TextStyle(
@@ -342,6 +329,22 @@ class _LoginState extends State<Login> {
   }
 
   botaoLogar(BuildContext context){
+      
+    var db = Firestore.instance;
+
+    String nome;
+
+    //retornar dados do documento a partir do idDocument
+    void getDocumento(String idDocumento) async {
+      //Recuperar o documento no Firestore
+      DocumentSnapshot doc =
+          await db.collection("usuario").document(idDocumento).get();
+
+      setState(() {
+        nome = doc.data["usuario"];
+      });
+    }
+
     return Container(
       padding: const EdgeInsets.only(top: 20),
       child: RaisedButton(
@@ -354,7 +357,8 @@ class _LoginState extends State<Login> {
         ),
         color: Colors.black,
         //evento do botão
-        onPressed: () {
+        onPressed: () {          
+
           //jsonRestApiHttp();
           String usuario = txtUsuario.text;
           String senha = txtSenha.text;
@@ -363,17 +367,21 @@ class _LoginState extends State<Login> {
           //se as condições das validações dos controles não forem atendidas, gera uma mensagem
           if (_formkey.currentState.validate()) {
 
-            if(this.listaUsuario.getUsuarios() == 0){
+            if(this.lista.length == 0){
               return mostraAlert(context);
             }
-            this.listaUsuario.getUsuarios().forEach((element) {
-              if(element.nome == usuario && element.senha == senha){
-                usOK = element.nome;
+            this.lista.forEach((element) {
+              if(element.usuario == usuario && element.senha == senha){
+                usOK = element.usuario;
               }
             });
 
             if(usOK.length > 0){
-              Navigator.pushNamed(context, "/home", arguments: Usuario(txtUsuario.text, txtSenha.text, ""));
+              final todayDate = DateTime.now();
+              String data = todayDate.toString();
+              nome = txtUsuario.text;
+              inserirLog(context, Log(nome, data));
+              Navigator.pushNamed(context, "/home", arguments: txtUsuario.text);
             }
             else{
               mostraAlert(context);
@@ -383,6 +391,8 @@ class _LoginState extends State<Login> {
       )
     );
   }
+
+ 
 
   mostraAlert(BuildContext context){ 
   // configura o button         
@@ -443,6 +453,20 @@ class _LoginState extends State<Login> {
     String senha;
     String senha2;
     String email;
+
+    //instância do Firebase
+  var db = Firestore.instance;
+
+  //retornar dados do documento a partir do idDocument
+  void getDocumento(String idDocumento) async {
+    //Recuperar o documento no Firestore
+    DocumentSnapshot doc =
+        await db.collection("usuario").document(idDocumento).get();
+
+    setState(() {
+      nome = doc.data["usuario"];
+    });
+  }
     
     return Container(
       padding: const EdgeInsets.only(top: 20),
@@ -457,6 +481,15 @@ class _LoginState extends State<Login> {
         color: Colors.black,
         //evento do botão
         onPressed: () {        
+          final String idDocumento = ModalRoute.of(context).settings.arguments;
+
+          if (idDocumento != null) {
+            if (nome == "" && senha == "") {
+              getDocumento(idDocumento);
+            }
+          }
+          
+
           nome = txtCadUsuario.text;
           senha = txtCadSenha.text;
           senha2 = txtCadSenha2.text;
@@ -474,7 +507,17 @@ class _LoginState extends State<Login> {
                 alertaCadastroErro(context, msg);
             }
             else{
-              if(this.listaUsuario.addUsuario(new Usuario(nome, senha,email))){
+              var cadastrado = lista.where((element) => element.usuario == nome).length;
+
+              if(cadastrado == 0){
+                if (idDocumento == null) {
+                        inserir(context, 
+                          Usuario(idDocumento, nome, senha, email));
+                      } else {
+                        atualizar(context,
+                            Usuario(idDocumento, nome, senha, email));
+                      }
+
                 alertaCadastroOk(context);
                 txtUsuario.text = "";
                 txtSenha.text = "";
@@ -495,6 +538,8 @@ class _LoginState extends State<Login> {
       )
     );
   }
+
+  
   
   alertaCadastroOk(BuildContext context){ 
   // configura o button         
@@ -553,4 +598,44 @@ class _LoginState extends State<Login> {
     );
   }
 
+
+  void atualizar(BuildContext context, Usuario usuario) async{
+    await db.collection("usuario").document(usuario.id)
+      .updateData(
+        {
+          "usuario": usuario.usuario,
+          "senha": usuario.senha,
+          "email": usuario.email
+        }
+      );
+  }
+
+  //
+  // INSERIR
+  //
+  void inserir(BuildContext context, Usuario usuario) async{
+    await db.collection("usuario")
+      .add(
+        {
+          "usuario": usuario.usuario,
+          "senha": usuario.senha,
+          "email": usuario.email
+        }
+      );
+  } 
+
+   //
+  // INSERIR
+  //
+  void inserirLog(BuildContext context, Log log) async{
+    await db.collection("log")
+      .add(
+        {
+          "usuario": log.usuario,
+          "data": log.data,
+        }
+      );
+  } 
+
 }
+

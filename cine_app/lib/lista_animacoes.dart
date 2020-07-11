@@ -1,4 +1,7 @@
-import 'package:cine_app/item.dart';
+import 'dart:async';
+
+import 'package:cine_app/model/item.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class ListaAnimacoes extends StatefulWidget {
@@ -8,13 +11,47 @@ class ListaAnimacoes extends StatefulWidget {
 
 class _ListaAnimacoesState extends State<ListaAnimacoes> {
 
-  List<Item> listaAnimacao = [];
+  String usuarioLogado;
+
+      //Conexão Fluter+Firebase
+  final db = Firestore.instance;
+  final String colecao = "item";
+
+  //Lista dinâmica para manipulação dos dados
+  List<Item> lista = List();
+
+  //Stream para "ouvir" o Firebase
+  StreamSubscription<QuerySnapshot> listen;
+
+  @override
+  void initState() {
+    super.initState();
+
+    //cancelar o listen, caso a coleção esteja vazia.
+    listen?.cancel();
+
+    //retornar dados da coleção e inserir na lista dinâmica
+    listen = db.collection(colecao).snapshots().listen((res) {
+      setState(() {
+        lista = res.documents
+            .map((doc) => Item.fromMap(doc.data, doc.documentID)).where((element) => element.tipo == "A")
+            .toList();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    listen?.cancel();
+    super.dispose();
+  }
 
   TextEditingController txtNomeFilme = new TextEditingController();
 
   String nomeFilme = "";
 
   Widget _itemLista(context, index) {
+
     return Container(
       padding: EdgeInsets.fromLTRB(20, 5, 20, 5),
       color: Colors.black,
@@ -26,29 +63,51 @@ class _ListaAnimacoesState extends State<ListaAnimacoes> {
               height: 15,
             ),
             Text(
-              listaAnimacao[index].titulo,
+              lista[index].titulo,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Image.asset(
-              listaAnimacao[index].imagem,
+              lista[index].imagem,
             ),
             SizedBox(
-              height: 15,
+              height: 5,
             ),            
             Text(
-              listaAnimacao[index].subtitulo,
+              lista[index].subtitulo,
               style: TextStyle(fontSize: 16),
-            )
+            ),
+            botaoDeletar(context, index)
           ],
         ),
       ),
     );
   }
 
+  botaoDeletar(context, int index){
+    if(usuarioLogado == "adm"){      
+      return IconButton(
+        icon: Icon(Icons.delete),
+        onPressed: () {
+
+          db.collection(colecao).document(lista[index].id).delete();
+
+        });
+    }
+    else{
+      return Container();      
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
 
-    listaAnimacao = ModalRoute.of(context).settings.arguments;
+    //listaAnimacao = ModalRoute.of(context).settings.arguments;
+
+    String usuario = ModalRoute.of(context).settings.arguments;
+
+    usuarioLogado = usuario;
+
+    //colecao = ModalRoute.of(context).settings.
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -66,27 +125,40 @@ class _ListaAnimacoesState extends State<ListaAnimacoes> {
             ),
           ],
         ),
-        body: Container(
-          color: Colors.grey[600],
-          //height: MediaQuery.of(context).size.height * 0.8,
-          child: Column(            
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Expanded(
-                child: ListView.builder(
-                  scrollDirection: Axis.vertical,
-                  itemCount: listaAnimacao.length, // total de itens da lista
-                  itemBuilder:
-                      _itemLista, // especificar a aparência dos itens da lista
-                ),
-              ),
-            ],
-          ),
+        body: StreamBuilder<QuerySnapshot>(
 
-          
+          //fonte de dados
+          stream: db.collection(colecao).snapshots(),
+
+          //exibição dos dados
+          builder: (context, snapshot) {
+            switch (snapshot.connectionState) {
+              case ConnectionState.none:
+              case ConnectionState.waiting:
+                return Center(child: CircularProgressIndicator());
+              default:
+                List<DocumentSnapshot> docs = snapshot.data.documents;
+                return Container(
+                  color: Colors.black,
+                  //height: MediaQuery.of(context).size.height * 0.8,
+                  child: Column(            
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Expanded(
+                        child: ListView.builder(
+                          scrollDirection: Axis.vertical,
+                          itemCount: lista.length, // total de itens da lista
+                          itemBuilder:
+                              _itemLista // especificar a aparência dos itens da lista
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+            }
+          }
         )
       )
     );
-
   }
 }
